@@ -6,6 +6,7 @@ from googletrans import Translator
 import json
 import time
 from scrapy.conf import settings
+import traceback
 
 
 class Yad2Item(scrapy.Item):
@@ -27,7 +28,7 @@ class Yad2Spider(scrapy.Spider):
     SEARCH_URL = 'https://www.yad2.co.il/realestate/forsale/?city=5000&' \
                  'neighborhood=205&' \
                  'property={property}&' \
-                 'rooms=2-3'
+                 'rooms=1-12&page={page}'
 
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -41,26 +42,30 @@ class Yad2Spider(scrapy.Spider):
         settings.overrides['DOWNLOAD_DELAY'] = 2
 
     def start_requests(self):
-        yield scrapy.Request(self.SEARCH_URL,
+        yield scrapy.Request(self.start_url,
                              callback=self.parse_search_url, headers=self.HEADERS)
 
     def parse_search_url(self, response):
         property_value_list = []
+        search_bar = None
 
-        search_bar = json.loads(response.body)['search_bar']['items']
-        for row in search_bar:
-            if self.translateArabic(row['title']) == 'asset':
-                for data in row['fields'][0]['dataFromMethod']:
-                    property_value_list.append(data['value'])
+        try:
+            # data = requests.get(self.start_url, headers=self.HEADERS).json()
+            search_bar = json.loads(response.body)['search_bar']['items']
+            # search_bar = data['search_bar']['items']
+        except:
+            self.log('Error parsing Search Bar content: {}'.format(traceback.format_exc()))
 
-        for property_value in property_value_list:
-            url = self.SEARCH_URL.format(property=property_value)
-            yield scrapy.Request(url, callback=self.parse_product, headers=self.HEADERS)
+        if search_bar:
+            for row in search_bar:
+                if self.translateArabic(row['title']) == 'asset':
+                    for data in row['fields'][0]['dataFromMethod']:
+                        property_value_list.append(data['value'])
 
-    # def parse_pagination(self, response):
-    #     for i in range(0, 10):
-    #         url = self.start_url + '&page={}'.format(i)
-    #         yield scrapy.Request(url, callback=self.parse_product, headers=self.HEADERS)
+            for property_value in property_value_list:
+                for page in range(1, 6):
+                    url = self.SEARCH_URL.format(property=property_value, page=page)
+                    yield scrapy.Request(url, callback=self.parse_product, headers=self.HEADERS)
 
     def parse_product(self, response):
         item = Yad2Item()
@@ -112,6 +117,7 @@ class Yad2Spider(scrapy.Spider):
 
             description = {
                 'content': self.translateArabic(content),
+                # 'content': content,
                 'balconies': balconies,
                 'entry_date': entry_date
             }
