@@ -18,6 +18,8 @@ class Yad2Item(scrapy.Item):
     description = scrapy.Field()
     updated_date = scrapy.Field()
     ad_num = scrapy.Field()
+    owner_name = scrapy.Field()
+    property_fields = scrapy.Field()
     pass
 
 
@@ -76,56 +78,81 @@ class Yad2Spider(scrapy.Spider):
             main_data = self.get_main_json(item_id)
 
             street = None
-            important_info_items = main_data['important_info_items']
-            for important_info in important_info_items:
-                if self.translateArabic(important_info['key']).lower() == 'street':
-                    street = self.translateArabic(important_info['value'])
+            if 'important_info_items' in main_data:
+                important_info_items = main_data['important_info_items']
+                for important_info in important_info_items:
+                    if self.translateArabic(important_info['key']).lower() == 'street':
+                        street = self.translateArabic(important_info['value'])
 
-            address_home_number = main_data['address_home_number']
+                address_home_number = main_data['address_home_number']
 
-            item['address'] = '{} {}'.format(street, address_home_number)
-            item['price'] = main_data.get('price')
-            item['ad_num'] = main_data.get('ad_number')
+                item['address'] = '{} {}'.format(street, address_home_number)
+                item['price'] = main_data.get('price')
+                item['ad_num'] = main_data.get('ad_number')
+                item['owner_name'] = self.translateArabic(main_data.get('agency_contact_name')) \
+                    if main_data.get('agency_contact_name') else None
 
-            info_bar_items = main_data.get('info_bar_items')
+                info_bar_items = main_data.get('info_bar_items')
 
-            rooms = None
-            floor = None
-            meters = None
+                rooms = None
+                floor = None
+                meters = None
 
-            for info_bar_item in info_bar_items:
-                if info_bar_item.get('key') == 'rooms':
-                    rooms = info_bar_item.get('titleWithoutLabel')
-                if info_bar_item.get('key') == 'floor':
-                    floor = info_bar_item.get('titleWithoutLabel')
-                if info_bar_item.get('key') == 'meter':
-                    meters = info_bar_item.get('titleWithoutLabel')
+                for info_bar_item in info_bar_items:
+                    if info_bar_item.get('key') == 'rooms':
+                        rooms = info_bar_item.get('titleWithoutLabel')
+                    if info_bar_item.get('key') == 'floor':
+                        floor = info_bar_item.get('titleWithoutLabel')
+                    if info_bar_item.get('key') == 'meter':
+                        meters = info_bar_item.get('titleWithoutLabel')
 
-            spec = {
-                'square_meters': meters,
-                'floor': floor,
-                'rooms': rooms
-            }
-            item['spec'] = spec
+                spec = {
+                    'square_meters': meters,
+                    'floor': floor,
+                    'rooms': rooms
+                }
+                item['spec'] = spec
 
-            content = main_data.get('info_text')
-            balconies = main_data.get('balconies')
-            entry_date = main_data.get('date_of_entry')
+                content = main_data.get('info_text')
+                balconies = main_data.get('balconies')
+                entry_date = main_data.get('date_of_entry')
 
-            updated_date = main_data['date_raw']
-            item['updated_date'] = updated_date.split(' ')[0]
+                updated_date = main_data['date_raw']
+                item['updated_date'] = updated_date.split(' ')[0]
 
-            description = {
-                'content': self.translateArabic(content),
-                # 'content': content,
-                'balconies': balconies,
-                'entry_date': entry_date
-            }
-            item['description'] = description
+                description = {
+                    'content': self.translateArabic(content),
+                    # 'content': content,
+                    'balconies': balconies,
+                    'entry_date': entry_date
+                }
+                item['description'] = description
 
-            item['phone_num'] = self.get_phone_num(item_id)
+                item['phone_num'] = self.get_phone_num(item_id)
 
-            yield item
+                property_fields = {
+                    'Exclusive property': '',
+                    'Merge': '',
+                    'bars': '',
+                    'parking': '',
+                    'Elevators': '',
+                    'Access for disabled': '',
+                    'Sun Terrace': '',
+                    'Terrace': '',
+                    'dimension': '',
+                    'Renovated': '',
+                    'Storage': '',
+                    'Pandoor doors': '',
+                    'Tadiran Air Conditioner': '',
+                    'Furniture': '',
+                }
+                property_list = main_data.get('additional_info_items_v2')
+                for property in property_list:
+                    property_fields[self.translateArabic(property['title'])] = property['value']
+
+                item['property_fields'] = property_fields
+
+                yield item
 
     def get_main_json(self, item_id):
         url = 'https://www.yad2.co.il/api/item/{}'.format(item_id)

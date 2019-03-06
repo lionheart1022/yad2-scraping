@@ -52,9 +52,13 @@ ROBOTSTXT_OBEY = False
 
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'yad2.middlewares.MyCustomDownloaderMiddleware': 543,
-#}
+DOWNLOADER_MIDDLEWARES = {
+   # 'yad2.middlewares.MyCustomDownloaderMiddleware': 543,
+    'scrapy_crawlera.CrawleraMiddleware': 610
+}
+
+CRAWLERA_ENABLED = True
+CRAWLERA_APIKEY = 'Your Crawlera API Key'
 
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
